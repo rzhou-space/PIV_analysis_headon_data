@@ -1,10 +1,10 @@
 # Install ReadVTK with: import Pkg; Pkg.add("ReadVTK")
-
 using ReadVTK
 
 # Loading VTI files into Julia
 
 function read_vti( filename, typ=Float64 )
+    
     vtk_file       = VTKFile( filename )
     vtk_cell_data  = get_cell_data(vtk_file)
     vtk_data_array = vtk_cell_data["intensities"]
@@ -47,54 +47,21 @@ function extract_layer(folder_path::String, i::Int64)
 
 end
 
+extract_layer("F:\\Downloads\\headon_data", 2)
 
-cell_data = read_vti("F:\\Downloads\\headon_data\\tp0.vti")
+# Read h5 file in which image data is saved. 
+
+function read_h5(folder_path::String)
+    h5open(folder_path, "r") do file
+        read(file, "data")
+    end
+end
+
+
+l_data = read_h5("headon_layer_2.h5")
 
 using PyPlot
 
-# Data from layer 2. 
-
-l_data = extract_layer("F:\\Downloads\\headon_data", 2)
-
-imshow(l_data[:,:,10])
-
-# Completely destoryed the data structure. 
-
-#=
-using DelimitedFiles
-
-
-writedlm("txt_file.txt", l_data)
-=#
-
-# JSON works BUT: the data type will NOT be saved and is therefore not
-# efficient for further analysis!
-
-#= 
-using JSON
-
-layer = 2
-cell_images = l_data
-data = Dict("layer" => layer, "cell_images" => cell_images)
-
-open("foo.json", "w") do f
-    JSON.print(f, data)
-end
-
-load_data = JSON.parsefile("C:\\Users\\Rutian Zhou\\PIV\\foo.json")
-=#
-
-# Doing PIV for two time points. 
-
-# Could be useful to generate the dynamic animation after PIV maps.
-
-using Plots
-for i in 1:20
-    IJulia.clear_output(true)
-    x = range(0,2*pi,1000); y = sin.(i*x)
-    Plots.display(Plots.plot(x,y, color="red"))
-    sleep(0.1)
-end
-println("Done!")
+imshow(l_data[:, :, 1])
 
 
