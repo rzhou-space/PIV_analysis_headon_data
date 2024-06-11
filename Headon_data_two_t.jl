@@ -50,11 +50,22 @@ end
 
 cell_data = read_vti("F:\\Downloads\\headon_data\\tp0.vti")
 
+imshow(cell_data[:, :, 1])
+
 using PyPlot
 
 # Data from layer 2. 
+extract_layer("F:\\Downloads\\headon_data", 5)
 
-l_data = extract_layer("F:\\Downloads\\headon_data", 2)
+function read_h5(folder_path::String)
+    h5open(folder_path, "r") do file
+        read(file, "data")
+    end
+end
+
+l_data = read_h5("headon_layer_5.h5")
+
+size(l_data)[3]
 
 imshow(l_data[:,:,10])
 
@@ -86,9 +97,152 @@ load_data = JSON.parsefile("C:\\Users\\Rutian Zhou\\PIV\\foo.json")
 
 # Doing PIV for two time points. 
 
+using Images
+
+img1 = Float64.(Gray.(l_data[:, :, 5]))
+img2 = Float64.(Gray.(l_data[:, :, 7]))
+
+begin
+subplot( 1, 2, 1 ); imshow( img1, cmap="gray" );
+subplot( 1, 2, 2 ); imshow( img2, cmap="gray" );
+end
+
+using multi_quickPIV
+
+VF, SN = multi_quickPIV.PIV( img1, img2 );
+
+using PyPlot
+U = VF[ 1, :, : ]; 
+V = VF[ 2, :, : ]; 
+# Relevant parameters that define the positions of the interrogation and search region
+default_params = multi_quickPIV.setPIVParameters(); 
+IA_size = multi_quickPIV._isize( default_params )[1:2]; # interrogation area size (in pixels)
+IA_step = multi_quickPIV._step( default_params )[1:2]; # distance between consecutive interrogation areas (in pixels)
+xgrid = [ (x-1)*IA_step[2] + div(IA_size[2],2) for y in 1:size(U,1), x in 1:size(U,2) ]; 
+ygrid = [ (y-1)*IA_step[1] + div(IA_size[1],2) for y in 1:size(U,1), x in 1:size(U,2) ]; 
+
+default_params 
+
+begin 
+imshow( img1 )
+#PyPlot.quiver( xgrid, ygrid, V, -1 .* U, color="red" )
+PyPlot.quiver( xgrid, ygrid, U, V, color="red" )
+end
+
+using Plots, PyPlot, multi_quickPIV
+
+default_params = multi_quickPIV.setPIVParameters() 
+IA_size = multi_quickPIV._isize( default_params )[1:2] # interrogation area size (in pixels)
+IA_step = multi_quickPIV._step( default_params )[1:2] # distance between consecutive interrogation areas (in pixels)
+
+for t in 1:2
+    
+    #IJulia.clear_output(true)
+    PyPlot.clf()
+    
+    img1 = Float64.(Gray.(l_data[:, :, t]))
+    img2 = Float64.(Gray.(l_data[:, :, t+1]))
+    
+    VF, SN = multi_quickPIV.PIV(img1, img2)
+    
+    U = VF[ 1, :, : ]
+    V = VF[ 2, :, : ]
+    # Relevant parameters that define the positions of the interrogation and search region
+    xgrid = [ (x-1)*IA_step[2] + div(IA_size[2],2) for y in 1:size(U,1), x in 1:size(U,2) ]; 
+    ygrid = [ (y-1)*IA_step[1] + div(IA_size[1],2) for y in 1:size(U,1), x in 1:size(U,2) ]; 
+    
+    #imshow(img1)
+    
+    #Plots.display(Plots.quiver(xgrid, ygrid, quiver=(V, -1 .* U) ))
+    PyPlot.quiver( xgrid, ygrid, V, -1 .* U )
+    PyPlot.pause(0.1)
+    
+end
+
+
+using PyCall
+@pyimport matplotlib.animation as anim
+using PyPlot
+
+function showanim(filename)
+    base64_video = base64encode(open(filename))
+    display("text/html", """<video controls src="data:video/x-m4v;base64,$base64_video">""")
+end
+
+A = randn(20,20,20)
+
+fig = figure(figsize=(3,3))
+
+function make_frame(i)
+    PyPlot.clf()
+    PyPlot.quiver(i, i, i, 1, color="red")
+end
+myanim = anim.FuncAnimation(fig, make_frame, frames=2,
+                            repeat = false, interval=500)
+myanim[:save]("test.gif", writer="pillow")
+
+
+A = randn(20,20,20)
+
+using PyCall
+@pyimport matplotlib.animation as anim
+using PyPlot
+
+default_params = multi_quickPIV.setPIVParameters() 
+IA_size = multi_quickPIV._isize( default_params )[1:2]
+IA_step = multi_quickPIV._step( default_params )[1:2]
+
+fig = PyPlot.figure(figsize=(10, 10))
+
+function make_frame(i)
+    PyPlot.clf()
+    
+    # EROR! But generally can use i! like above!
+    img1 = Float64.(Gray.(l_data[:, :, i]))
+    #img2 = Float64.(Gray.(l_data[:, :, i+1]))
+    #imshow(img1)
+    
+    #VF, SN = multi_quickPIV.PIV(img1, img2)
+    
+    #U = VF[ 1, :, : ]
+    #V = VF[ 2, :, : ]
+    
+    #xgrid = [ (x-1)*IA_step[2] + div(IA_size[2],2) for y in 1:size(U,1), x in 1:size(U,2) ] 
+    #ygrid = [ (y-1)*IA_step[1] + div(IA_size[1],2) for y in 1:size(U,1), x in 1:size(U,2) ]
+    
+    #PyPlot.quiver( xgrid, ygrid, V, -1 .* U )
+end
+
+myanim = anim.FuncAnimation(fig, make_frame, frames=size(l_data,3), 
+                            interval=100, repeat=false, blit=false)
+myanim[:save]("test3.gif", writer="pillow")
+#myanim.save("test2.gif", writer="pillow", args=["-loop", '1']))
+
+using PyCall
+@pyimport matplotlib.animation as anim
+using PyPlot
+import IJulia
+
+A = randn(20,20,20,2)
+
+fig, axes = PyPlot.subplots(nrows=1, ncols=2, figsize=(7, 2.5))
+ax1, ax2 = axes
+
+function make_frame(i)
+    ax1.clear()
+    ax2.clear()
+    ax1.imshow(A[:,:,i+1, 1])
+    ax2.imshow(A[:,:,i+1, 2])
+end
+
+myanim = anim.FuncAnimation(fig, make_frame, frames=size(A,3), interval=20, blit=false)
+myanim[:save]("test2.gif", writer="pillow")
+
+
 # Could be useful to generate the dynamic animation after PIV maps.
 
 using Plots
+#@gif
 for i in 1:20
     IJulia.clear_output(true)
     x = range(0,2*pi,1000); y = sin.(i*x)
@@ -96,5 +250,43 @@ for i in 1:20
     sleep(0.1)
 end
 println("Done!")
+
+using GLMakie
+
+using FileIO, GeometryTypes, Colors
+
+xs = range(0, 5)
+
+using GLMakie, multi_quickPIV
+
+time = Observable(0)
+
+img1 = @lift(Float64.(Gray.(l_data[:, :, $time+1])))
+img2 = @lift(Float64.(Gray.(l_data[:, :, $time+2])))
+
+VF, SN = multi_quickPIV.PIV(img1, img2)
+
+U = VF[ 1, :, : ]
+V = VF[ 2, :, : ]
+# Relevant parameters that define the positions of the interrogation and search region
+default_params = multi_quickPIV.setPIVParameters()
+IA_size = multi_quickPIV._isize( default_params )[1:2] # interrogation area size (in pixels)
+IA_step = multi_quickPIV._step( default_params )[1:2] # distance between consecutive interrogation areas (in pixels)
+xgrid = [ (x-1)*IA_step[2] + div(IA_size[2],2) for y in 1:size(U,1), x in 1:size(U,2) ]
+ygrid = [ (y-1)*IA_step[1] + div(IA_size[1],2) for y in 1:size(U,1), x in 1:size(U,2) ]
+
+PyPlot.quiver( xgrid, ygrid, V, -1 .* U, color="red" )
+#=
+fig = lines(xs, ys_1, color = :blue, linewidth = 4,
+    axis = (title = @lift("t = $(round($time, digits = 1))"),))
+GLMakie.scatter!(xs, ys_2, color = :red, markersize = 15)
+=#
+framerate = 1
+timestamps = range(0, 5, step=1/framerate)
+
+record(fig, "animation.mp4", timestamps;
+        framerate = framerate) do t
+    time[] = t
+end
 
 

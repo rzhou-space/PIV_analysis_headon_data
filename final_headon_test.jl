@@ -47,8 +47,6 @@ function extract_layer(folder_path::String, i::Int64)
 
 end
 
-extract_layer("F:\\Downloads\\headon_data", 2)
-
 # Read h5 file in which image data is saved. 
 
 function read_h5(folder_path::String)
@@ -58,10 +56,34 @@ function read_h5(folder_path::String)
 end
 
 
-l_data = read_h5("headon_layer_2.h5")
+data_2 = read_h5("headon_layer_2.h5")
 
+imshow(data_2[:, :, 11])
+
+# Function for presenting single layer dynamics over time as .gif
+
+using PyCall
+@pyimport matplotlib.animation as anim
 using PyPlot
 
-imshow(l_data[:, :, 1])
+# Update function for video.
+function make_frame(i)
+    imshow(l_data[:, :, i+1])
+end
+
+# Making video.
+function single_layer_dyn(folder_path::String, filename::String)
+    # Read the data saved in .h5 file.
+    data = read_h5(folder_path)
+    
+    fig = PyPlot.figure(figsize=(10, 10))
+
+    myanim = anim.FuncAnimation(fig, make_frame, frames=size(data, 3), 
+                                interval=200, repeat=false, blit=false)
+    myanim[:save](filename*".gif", writer="pillow")
+    
+end
+
+single_layer_dyn("headon_layer_2.h5", "layer_2_dyn")
 
 
