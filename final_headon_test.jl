@@ -67,23 +67,81 @@ using PyCall
 using PyPlot
 
 # Update function for video.
-function make_frame(i)
-    imshow(l_data[:, :, i+1])
-end
 
 # Making video.
-function single_layer_dyn(folder_path::String, filename::String)
+#function single_layer_dyn(folder_path::String, filename::String)
     # Read the data saved in .h5 file.
-    data = read_h5(folder_path)
-    
-    fig = PyPlot.figure(figsize=(10, 10))
+data = read_h5("headon_layer_5.h5")
 
-    myanim = anim.FuncAnimation(fig, make_frame, frames=size(data, 3), 
-                                interval=200, repeat=false, blit=false)
-    myanim[:save](filename*".gif", writer="pillow")
-    
+fig = PyPlot.figure(figsize=(10, 10))
+
+function make_frame(i)
+    imshow(data[:, :, i+1])
 end
 
-single_layer_dyn("headon_layer_2.h5", "layer_2_dyn")
+myanim = anim.FuncAnimation(fig, make_frame, frames=size(data, 3), 
+                                interval=200, repeat=false, blit=false)
+myanim[:save]("headon_layer_5.gif", writer="pillow")
+#end
+
+using PyCall
+@pyimport matplotlib.animation as anim
+using PyPlot
+
+function make_frame(i, data)
+    imshow(data[:, :, i+1])
+end
+
+function single_layer_dyn(open_filename::String, save_filename::String)
+    data = read_h5(open_filename*".h5")
+    
+    fig = PyPlot.figure(figsize=(10, 10))
+    
+    myanim = anim.FuncAnimation(fig, make_frame, frames=size(data, 3), 
+                                interval=200, repeat=false, blit=false)
+    myanim[:save](save_filename*".gif", writer="pillow")
+end
+    
+
+single_layer_dyn("headon_layer_5", "headon_layer_5")
+
+# Function for PIV vector fields. (Causion the orientation y-axis!)
+
+using PyCall
+@pyimport matplotlib.animation as anim
+using PyPlot
+using Images
+using multi_quickPIV
+
+l_data = read_h5("headon_layer_5.h5")
+
+default_params = multi_quickPIV.setPIVParameters() 
+IA_size = multi_quickPIV._isize( default_params )[1:2]
+IA_step = multi_quickPIV._step( default_params )[1:2]
+
+fig = PyPlot.figure(figsize=(10, 10))
+
+function make_frame(i) # Due to Python function i begins with 0!
+    
+    PyPlot.clf()
+    
+    img1 = Float64.(Gray.(l_data[:, :, i+1]))
+    img2 = Float64.(Gray.(l_data[:, :, i+2]))
+    
+    VF, SN = multi_quickPIV.PIV(img1, img2)
+    
+    U = VF[ 1, :, : ]
+    V = VF[ 2, :, : ]
+    
+    xgrid = [ (x-1)*IA_step[2] + div(IA_size[2],2) for y in 1:size(U,1), x in 1:size(U,2) ] 
+    ygrid = [ (y-1)*IA_step[1] + div(IA_size[1],2) for y in 1:size(U,1), x in 1:size(U,2) ]
+    
+    PyPlot.quiver( xgrid, ygrid, V, -1 .* U )
+end
+
+myanim = anim.FuncAnimation(fig, make_frame, frames=size(l_data,3)-1, 
+                            interval=400)
+myanim[:save]("headon_5_piv.gif", writer="pillow")
+
 
 

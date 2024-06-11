@@ -164,20 +164,21 @@ using PyCall
 @pyimport matplotlib.animation as anim
 using PyPlot
 
-function showanim(filename)
-    base64_video = base64encode(open(filename))
-    display("text/html", """<video controls src="data:video/x-m4v;base64,$base64_video">""")
-end
 
 A = randn(20,20,20)
 
 fig = figure(figsize=(3,3))
 
 function make_frame(i)
-    PyPlot.clf()
-    PyPlot.quiver(i, i, i, 1, color="red")
+    #PyPlot.clf()
+    #PyPlot.quiver(i, i, i, 1, color="red")
+    if i==0
+        print("Tutu :/")
+    end
+    imshow(Float64.(A[:, :, i+1]))
+    imshow(A[:, :, i+2])
 end
-myanim = anim.FuncAnimation(fig, make_frame, frames=2,
+myanim = anim.FuncAnimation(fig, make_frame, frames=19,
                             repeat = false, interval=500)
 myanim[:save]("test.gif", writer="pillow")
 
@@ -187,34 +188,37 @@ A = randn(20,20,20)
 using PyCall
 @pyimport matplotlib.animation as anim
 using PyPlot
+using Images
+using multi_quickPIV
 
+l_data = read_h5("headon_layer_5.h5")
+#imshow(Gray.(l_data[:,:,1]))
 default_params = multi_quickPIV.setPIVParameters() 
 IA_size = multi_quickPIV._isize( default_params )[1:2]
 IA_step = multi_quickPIV._step( default_params )[1:2]
 
 fig = PyPlot.figure(figsize=(10, 10))
 
-function make_frame(i)
+function make_frame(i) # Due to Python function i begins with 0!
+    
     PyPlot.clf()
     
-    # EROR! But generally can use i! like above!
-    img1 = Float64.(Gray.(l_data[:, :, i]))
-    #img2 = Float64.(Gray.(l_data[:, :, i+1]))
-    #imshow(img1)
+    img1 = Float64.(Gray.(l_data[:, :, i+1]))
+    img2 = Float64.(Gray.(l_data[:, :, i+2]))
     
-    #VF, SN = multi_quickPIV.PIV(img1, img2)
+    VF, SN = multi_quickPIV.PIV(img1, img2)
     
-    #U = VF[ 1, :, : ]
-    #V = VF[ 2, :, : ]
+    U = VF[ 1, :, : ]
+    V = VF[ 2, :, : ]
     
-    #xgrid = [ (x-1)*IA_step[2] + div(IA_size[2],2) for y in 1:size(U,1), x in 1:size(U,2) ] 
-    #ygrid = [ (y-1)*IA_step[1] + div(IA_size[1],2) for y in 1:size(U,1), x in 1:size(U,2) ]
+    xgrid = [ (x-1)*IA_step[2] + div(IA_size[2],2) for y in 1:size(U,1), x in 1:size(U,2) ] 
+    ygrid = [ (y-1)*IA_step[1] + div(IA_size[1],2) for y in 1:size(U,1), x in 1:size(U,2) ]
     
-    #PyPlot.quiver( xgrid, ygrid, V, -1 .* U )
+    PyPlot.quiver( xgrid, ygrid, V, -1 .* U )
 end
 
-myanim = anim.FuncAnimation(fig, make_frame, frames=size(l_data,3), 
-                            interval=100, repeat=false, blit=false)
+myanim = anim.FuncAnimation(fig, make_frame, frames=size(l_data,3)-1, 
+                            interval=400)
 myanim[:save]("test3.gif", writer="pillow")
 #myanim.save("test2.gif", writer="pillow", args=["-loop", '1']))
 
