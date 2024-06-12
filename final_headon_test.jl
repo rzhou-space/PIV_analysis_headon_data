@@ -47,7 +47,10 @@ function extract_layer(folder_path::String, i::Int64)
 
 end
 
+extract_layer("E:\\PhD\\Headon_results\\headon_data", 1)
+
 # Read h5 file in which image data is saved. 
+using HDF5
 
 function read_h5(folder_path::String)
     h5open(folder_path, "r") do file
@@ -56,7 +59,7 @@ function read_h5(folder_path::String)
 end
 
 
-data_2 = read_h5("headon_layer_2.h5")
+data_1 = read_h5("headon_layer_1.h5")
 
 imshow(data_2[:, :, 11])
 
@@ -65,6 +68,7 @@ imshow(data_2[:, :, 11])
 using PyCall
 @pyimport matplotlib.animation as anim
 using PyPlot
+using Images
 
 # Update function for video.
 
@@ -76,7 +80,9 @@ data = read_h5("headon_layer_5.h5")
 fig = PyPlot.figure(figsize=(10, 10))
 
 function make_frame(i)
-    imshow(data[:, :, i+1])
+    PyPlot.clf()
+    PyPlot.title("t=$(i+1)")
+    imshow(Float64.(Gray.(data[:, :, i+1])))
 end
 
 myanim = anim.FuncAnimation(fig, make_frame, frames=size(data, 3), 
@@ -136,7 +142,11 @@ function make_frame(i) # Due to Python function i begins with 0!
     xgrid = [ (x-1)*IA_step[2] + div(IA_size[2],2) for y in 1:size(U,1), x in 1:size(U,2) ] 
     ygrid = [ (y-1)*IA_step[1] + div(IA_size[1],2) for y in 1:size(U,1), x in 1:size(U,2) ]
     
-    PyPlot.quiver( xgrid, ygrid, V, -1 .* U )
+    PyPlot.title("t=$(i+1)")
+    imshow(img1)
+    #PyPlot.quiver( xgrid, ygrid, V, -1 .* U )
+    PyPlot.quiver( xgrid, ygrid, U, V, color="red" )
+    
 end
 
 myanim = anim.FuncAnimation(fig, make_frame, frames=size(l_data,3)-1, 
