@@ -15,6 +15,8 @@ function read_vti( filename, typ=Float64 )
 end
 
 
+read_vti("E:\\PhD\\Headon_results\\headon_data\\tp0.vti")
+
 # Extract the single i-th layer from vti files and save the image data
 # over all time points locally into a .h5 file.
 
@@ -23,14 +25,15 @@ using HDF5
 function extract_layer(folder_path::String, i::Int64)
     
     # variable folder_path should be in type string.
-    #n_files = length(readdir(folder_path))
+    n_files = length(readdir(folder_path))
     
     # Storing data from a single layer over time in an Array. 
     layer_data = Matrix{Float64}[]
     
-    for file in readdir(folder_path)
+    #for file in readdir(folder_path)
+    for t in 0:n_files-1
         # file is in type String. Open the file.
-        cell_data = read_vti(folder_path * "\\" * file)
+        cell_data = read_vti(folder_path*"\\tp"*string(t)*".vti")
         # Choose the i-th layer from the cell data and append it 
         # to layer_data.
         push!(layer_data, cell_data[:,:,i])
@@ -47,8 +50,6 @@ function extract_layer(folder_path::String, i::Int64)
 
 end
 
-extract_layer("E:\\PhD\\Headon_results\\headon_data", 1)
-
 # Read h5 file in which image data is saved. 
 using HDF5
 
@@ -58,10 +59,6 @@ function read_h5(folder_path::String)
     end
 end
 
-
-data_1 = read_h5("headon_layer_1.h5")
-
-imshow(data_2[:, :, 11])
 
 # Function for presenting single layer dynamics over time as .gif
 
@@ -90,6 +87,8 @@ myanim = anim.FuncAnimation(fig, make_frame, frames=size(data, 3),
 myanim[:save]("headon_layer_5.gif", writer="pillow")
 #end
 
+#=
+
 using PyCall
 @pyimport matplotlib.animation as anim
 using PyPlot
@@ -107,9 +106,12 @@ function single_layer_dyn(open_filename::String, save_filename::String)
                                 interval=200, repeat=false, blit=false)
     myanim[:save](save_filename*".gif", writer="pillow")
 end
-    
 
+=#
+
+#=
 single_layer_dyn("headon_layer_5", "headon_layer_5")
+=#
 
 # Function for PIV vector fields. (Causion the orientation y-axis!)
 
@@ -118,6 +120,7 @@ using PyCall
 using PyPlot
 using Images
 using multi_quickPIV
+using VideoIO, FFMPEG
 
 l_data = read_h5("headon_layer_5.h5")
 
@@ -152,6 +155,7 @@ end
 myanim = anim.FuncAnimation(fig, make_frame, frames=size(l_data,3)-1, 
                             interval=400)
 myanim[:save]("headon_5_piv.gif", writer="pillow")
-
+#myanim[:save]("test_anim.mp4", writer="ffmpeg")
+#myanim[:save]("test_anim.mp4", bitrate=-1, extra_args=["-vcodec", "libx264", "-pix_fmt", "yuv420p"])
 
 
