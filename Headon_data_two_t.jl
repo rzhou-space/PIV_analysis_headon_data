@@ -15,6 +15,10 @@ function read_vti( filename, typ=Float64 )
 end
 
 
+time0 = read_vti("E:\\PhD\\Headon_results\\headon_data\\tp0.vti")
+
+time0[:, :, 1]
+
 # Extract the single i-th layer from vti files and save the image data
 # over all time points locally into a .h5 file.
 
@@ -23,14 +27,15 @@ using HDF5
 function extract_layer(folder_path::String, i::Int64)
     
     # variable folder_path should be in type string.
-    #n_files = length(readdir(folder_path))
+    n_files = length(readdir(folder_path))
     
     # Storing data from a single layer over time in an Array. 
     layer_data = Matrix{Float64}[]
     
-    for file in readdir(folder_path)
+    #for file in readdir(folder_path)
+    for t in 0:n_files-1
         # file is in type String. Open the file.
-        cell_data = read_vti(folder_path * "\\" * file)
+        cell_data = read_vti(folder_path*"\\tp"*string(t)*".vti")
         # Choose the i-th layer from the cell data and append it 
         # to layer_data.
         push!(layer_data, cell_data[:,:,i])
@@ -48,14 +53,22 @@ function extract_layer(folder_path::String, i::Int64)
 end
 
 
-cell_data = read_vti("F:\\Downloads\\headon_data\\tp0.vti")
+string(1)
 
-imshow(cell_data[:, :, 1])
+for i in 0:4-1
+    print(i)
+end
+
+sort!(readdir("E:\\PhD\\Headon_results\\headon_data"))
+
+
 
 using PyPlot
 
 # Data from layer 2. 
-extract_layer("F:\\Downloads\\headon_data", 5)
+extract_layer("E:\\PhD\\Headon_results\\headon_data", 2)
+
+using HDF5
 
 function read_h5(folder_path::String)
     h5open(folder_path, "r") do file
@@ -292,5 +305,56 @@ record(fig, "animation.mp4", timestamps;
         framerate = framerate) do t
     time[] = t
 end
+
+using PyPlot 
+
+l_data = read_h5("headon_layer_1.h5")
+
+imshow(l_data[:, :, 15])
+
+img1 = l_data[:, :, 15]
+
+using Images
+
+typeof(Float64.(Gray.(img1)))
+
+typeof(Gray.(img1))
+
+using ImageBinarization
+using TestImages
+using FileIO
+
+#testimg = testimage("earth_apollo17.jpg")
+testimg = load("F:\\Downloads\\cells.jpg")
+imgb1 = binarize(Gray.(testimg), Intermodes())
+
+imgb2 = binarize(img1, Polysegment())
+imshow(imgb2)
+typeof(imgb2)
+#t = find_threshold(img1, Otsu(); nbins = 256)
+
+using multi_quickPIV
+
+pivimg1 = l_data[:, :, 1]
+pivimg1_b = binarize(pivimg1, Polysegment())
+pivimg2 = l_data[:, :, 2]
+pivimg2_b = binarize(pivimg2, Polysegment())
+
+# Doing PIV
+params = multi_quickPIV.setPIVParameters()
+IA_size = multi_quickPIV._isize(params)[1:2]
+IA_step = multi_quickPIV._step(params)[1:2]
+
+VF, SN = multi_quickPIV.PIV(pivimg1_b, pivimg2_b, params)
+
+U = VF[1, :, :]
+V = VF[2, :, :]
+    
+xgrid = [(x-1)*IA_step[2] + div(IA_size[2],2) for y in 1:size(U,1), x in 1:size(U,2)] 
+ygrid = [(y-1)*IA_step[1] + div(IA_size[1],2) for y in 1:size(U,1), x in 1:size(U,2)]
+
+PyPlot.imshow(imgb2)
+#PyPlot.quiver(xgrid, ygrid, V, -1 .* U)
+PyPlot.quiver( xgrid, ygrid, U, V, color="red" )
 
 
