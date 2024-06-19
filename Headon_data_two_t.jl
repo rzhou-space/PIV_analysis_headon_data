@@ -312,7 +312,7 @@ l_data = read_h5("headon_layer_1.h5")
 
 imshow(l_data[:, :, 15])
 
-img1 = l_data[:, :, 15]
+img1 = l_data[:, :, 1]
 
 using Images
 
@@ -334,27 +334,178 @@ typeof(imgb2)
 #t = find_threshold(img1, Otsu(); nbins = 256)
 
 using multi_quickPIV
+using ImageBinarization
 
+function integralArea( intArr::Matrix{Float64}, TL, BR)
+    area = intArr[BR[1],BR[2]] - intArr[BR[1],TL[2]] - intArr[TL[1],BR[2]] + intArr[TL[1],TL[2]]
+    return area
+end
+
+# Images with filtering.
 pivimg1 = l_data[:, :, 1]
 pivimg1_b = binarize(pivimg1, Polysegment())
 pivimg2 = l_data[:, :, 2]
 pivimg2_b = binarize(pivimg2, Polysegment())
 
-# Doing PIV
-params = multi_quickPIV.setPIVParameters()
+# Doing PIV.
+params = multi_quickPIV.setPIVParameters(interSize=(32, 32))
 IA_size = multi_quickPIV._isize(params)[1:2]
 IA_step = multi_quickPIV._step(params)[1:2]
 
 VF, SN = multi_quickPIV.PIV(pivimg1_b, pivimg2_b, params)
 
-U = VF[1, :, :]
-V = VF[2, :, :]
+U = VF[1, :, :] #32x32 matrix
+V = VF[2, :, :] #32x32 matrix
     
-xgrid = [(x-1)*IA_step[2] + div(IA_size[2],2) for y in 1:size(U,1), x in 1:size(U,2)] 
-ygrid = [(y-1)*IA_step[1] + div(IA_size[1],2) for y in 1:size(U,1), x in 1:size(U,2)]
+xgrid = [(x-1)*IA_step[2] + div(IA_size[2],2) for y in 1:size(U,1), x in 1:size(U,2)] #32x32 matrix
+ygrid = [(y-1)*IA_step[1] + div(IA_size[1],2) for y in 1:size(U,1), x in 1:size(U,2)] #32x32 matrix
 
-PyPlot.imshow(imgb2)
-#PyPlot.quiver(xgrid, ygrid, V, -1 .* U)
-PyPlot.quiver( xgrid, ygrid, U, V, color="red" )
+
+# Setting arrows on blank IA to be zero.
+width = Integer(IA_size[1]/2)
+sum_subarea = zeros(Float64, size(xgrid))
+w = size(pivimg1_b)[1]
+h = size(pivimg1_b)[2]
+
+for i in 1:size(U)[1]
+    for j in 1:size(U)[2]
+        
+        col = xgrid[i, j]
+        row = ygrid[i, j]
+            
+        TL = max(1, row-width), max(1, col-width)
+        BR = min(h, row+width), min(w, col+width)
+        
+        if integralArea(pivimg1_b, TL, BR) == 0
+            U[i, j] = 0
+            V[i, j] = 0
+        end
+        
+        #sum_subarea[i, j] = integralArea(sum_img, TL, BR)
+    end
+end
+
+
+PyPlot.imshow(pivimg1_b)
+PyPlot.quiver(xgrid, ygrid, V, -1 .* U, color="red")
+#PyPlot.quiver( xgrid, ygrid, U, V, color="red" )
+
+pivimg1_b[1:32, 1:32]
+
+findall(x-> x != 0, U)
+
+pivimg1_b[xgrid[32,32], ygrid[32,32]]
+
+pivimg1_b
+
+nzpos = findall(x-> x == 0, pivimg1_b)
+
+pivimg1_b[nzpos[200]]
+
+ CartesianIndex(335, 2) ∉ nzpos
+
+imshow(pivimg1_b)
+
+U
+
+V
+
+xgrid
+
+ygrid
+
+CartesianIndex(xgrid[10, 10], ygrid[1, 1]) in nzpos 
+
+U
+
+using multi_quickPIV
+using PyPlot
+
+img1 = zeros(Float64, 100, 100)
+img1[1, 1] = 1
+img2 = zeros(Float64, 100, 100)
+img2[10, 10] = 1
+
+params = multi_quickPIV.setPIVParameters(interSize=(32, 32))
+IA_size = multi_quickPIV._isize(params)[1:2]
+IA_step = multi_quickPIV._step(params)[1:2]
+
+VF, SN = multi_quickPIV.PIV(img1, img2, params)
+
+U = VF[1, :, :] #32x32 matrix
+V = VF[2, :, :] #32x32 matrix
+    
+xgrid = [(x-1)*IA_step[2] + div(IA_size[2],2) for y in 1:size(U,1), x in 1:size(U,2)] #32x32 matrix
+ygrid = [(y-1)*IA_step[1] + div(IA_size[1],2) for y in 1:size(U,1), x in 1:size(U,2)] #32x32 matrix
+
+PyPlot.imshow(img1)
+PyPlot.quiver(xgrid, ygrid, V, -1 .* U, color="red")
+
+U
+
+V
+
+IA_size
+
+xgrid
+
+ygrid
+
+using ImageAnalysis
+
+sum_img = ImageAnalysis.integralArray(img1, typ = Float64, fun = (x) -> (x))
+
+function integralArea( intArr::Matrix{Float64}, TL, BR)
+    #TL   = TL .+ 1;
+	#BR   = BR .+ 1;
+	area = intArr[BR[1],BR[2]] - intArr[BR[1],TL[2]] - intArr[TL[1],BR[2]] + intArr[TL[1],TL[2]]
+    return area
+end
+
+width = 16
+#sum_subarea = zeros(Float64, size(xgrid))
+w = size(img1)[1]
+h = size(img1)[2]
+for i in 1:3
+    for j in 1:3
+        col = xgrid[i, j]
+        row = ygrid[i, j]
+            
+        TL = max(1, row-width), max(1, col-width)
+        BR = min(h, row+width), min(w, col+width)
+        
+        if integralArea(sum_img, TL, BR) == 0
+            U[i, j] = 0
+            V[i, j] = 0
+        else 
+            U[i, j] =1
+            V[i, j] = 1
+        end
+        
+        #sum_subarea[i, j] = integralArea(sum_img, TL, BR)
+    end
+end
+sum_subarea
+
+U
+
+V
+
+integralArea(sum_img, (1, 1), (32, 32))
+
+
+
+sum_img[32,32] - sum_img[32,1] -sum_img[1,32] + sum_img[1,1]
+
+imshow(img1)
+PyPlot.quiver(xgrid, ygrid, V, -1 .* U, color="red")
+
+x = 3
+for i in 1:2
+    x /= 3
+end
+x
+
+Integer(2.0)
 
 
