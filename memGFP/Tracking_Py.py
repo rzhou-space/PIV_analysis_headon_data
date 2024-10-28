@@ -162,10 +162,11 @@ def get_window_avg(ar, W, i, j):
 #     return all_x_trajectory, all_y_trajectory
 
 
-# In[23]:
+# In[2]:
 
 
-def pseudo_tracking_piv_grid_single_v2(U, V, t_interval, start_x, start_y, scale=(1, 1)):
+def pseudo_tracking_piv_grid_single_v2(U, V, t_interval, start_x, start_y, step_width_at_PIV,
+                                       scale=(1, 1)):
     # U, V: (#total_time, 63, 63) dimensional
     # t_interval: [t0, t1] two element list
     # start_x: [x0] one element list. x, y in image coordinate.
@@ -184,8 +185,8 @@ def pseudo_tracking_piv_grid_single_v2(U, V, t_interval, start_x, start_y, scale
 
     for i in range(1,num_step):
         # Transform the points into vector field grid. 
-        x_cor = round(trajectory_x[i-1]/16 - 1)
-        y_cor = round(trajectory_y[i-1]/16 - 1)
+        x_cor = round(trajectory_x[i-1]/step_width_at_PIV - 1)
+        y_cor = round(trajectory_y[i-1]/step_width_at_PIV - 1)
         t = t_interval[i]
         
         # Determine the vector directions through averaging surrounding neighbours.
@@ -199,8 +200,8 @@ def pseudo_tracking_piv_grid_single_v2(U, V, t_interval, start_x, start_y, scale
         update_y_img = trajectory_y[i-1] + dy # round(trajectory_y[i-1] + dy)
 
         # Tranform the updates position in 
-        update_x_grid = round(update_x_img/16 - 1)
-        update_y_grid = round(update_y_img/16 - 1)
+        update_x_grid = round(update_x_img/step_width_at_PIV - 1)
+        update_y_grid = round(update_y_img/step_width_at_PIV - 1)
 
         # Stays in the last inside position if comes over the image boundary. # TODO: Reweite it in a better way! 
         if update_x_grid < 0 or update_x_grid >= x_dim:
@@ -218,10 +219,11 @@ def pseudo_tracking_piv_grid_single_v2(U, V, t_interval, start_x, start_y, scale
     return np.array(trajectory_x), np.array(trajectory_y) # Final results in image coordinate.
 
 
-# In[24]:
+# In[3]:
 
 
-def pseudo_tracking_piv_grid_v2(U, V, t_interval_array, start_x_array, start_y_array, scale=(1, 1)):
+def pseudo_tracking_piv_grid_v2(U, V, t_interval_array, start_x_array, start_y_array, step_width_at_PIV, 
+                                scale=(1, 1)):
     # t_interval_array: [[t0, t1], ...] list of two element lists
     # start_x_array: [[x0], ...] list of one element lists, image coordinates.
     # start_y_array: [[y0], ...] list of one element lists, image coordinates.
@@ -234,7 +236,8 @@ def pseudo_tracking_piv_grid_v2(U, V, t_interval_array, start_x_array, start_y_a
         start_y = start_y_array[i]
         t_interval = t_interval_array[i]
 
-        x_track, y_track = pseudo_tracking_piv_grid_single_v2(U, V, t_interval, start_x, start_y, scale)
+        x_track, y_track = pseudo_tracking_piv_grid_single_v2(U, V, t_interval, start_x, start_y, step_width_at_PIV, 
+                                                              scale)
         # Get the track results in vector field grid and transform into image coordinate.
         all_x_trajectory.append(x_track)
         all_y_trajectory.append(y_track)
