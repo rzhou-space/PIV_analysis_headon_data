@@ -190,9 +190,9 @@ def pseudo_tracking_piv_grid_single_v2(U, V, t_interval, start_x, start_y, piv_s
 
     for i in range(1,num_step):
         # Transform the points into vector field grid. 
-        x_cor = round(trajectory_x[i-1]/piv_step_width - 1)
-        y_cor = round(trajectory_y[i-1]/piv_step_width - 1)
-        t = t_interval[i]
+        x_cor = np.round(trajectory_x[i-1]/piv_step_width - 1).astype(int)
+        y_cor = np.round(trajectory_y[i-1]/piv_step_width - 1).astype(int)
+        t = int(t_interval[i])
         
         # Determine the vector directions through averaging surrounding neighbours.
         # dx and dy are changes in img coordinates!
@@ -205,8 +205,8 @@ def pseudo_tracking_piv_grid_single_v2(U, V, t_interval, start_x, start_y, piv_s
         update_y_img = trajectory_y[i-1] + dy # round(trajectory_y[i-1] + dy)
 
         # Tranform the updates position in 
-        update_x_grid = round(update_x_img/piv_step_width - 1)
-        update_y_grid = round(update_y_img/piv_step_width - 1)
+        update_x_grid = np.round(update_x_img/piv_step_width - 1)
+        update_y_grid = np.round(update_y_img/piv_step_width - 1)
 
         # Stays in the last inside position if comes over the image boundary. # TODO: Reweite it in a better way! 
         if update_x_grid < 0 or update_x_grid >= x_dim:
@@ -229,7 +229,8 @@ def pseudo_tracking_piv_grid_single_v2(U, V, t_interval, start_x, start_y, piv_s
 
 # Generation of pseudo tracks with multiple start conditions. 
 
-def pseudo_tracking_piv_grid_v2(U, V, t_interval_array, start_x_array, start_y_array, scale=(1, 1)):
+def pseudo_tracking_piv_grid_v2(U, V, t_interval_array, start_x_array, start_y_array,
+                                piv_step_width, scale=(1, 1)):
     # t_interval_array: [[t0, t1], ...] list of two element lists
     # start_x_array: [[x0], ...] list of one element lists, image coordinates.
     # start_y_array: [[y0], ...] list of one element lists, image coordinates.
@@ -242,7 +243,8 @@ def pseudo_tracking_piv_grid_v2(U, V, t_interval_array, start_x_array, start_y_a
         start_y = start_y_array[i]
         t_interval = t_interval_array[i]
 
-        x_track, y_track = pseudo_tracking_piv_grid_single_v2(U, V, t_interval, start_x, start_y, scale)
+        x_track, y_track = pseudo_tracking_piv_grid_single_v2(U, V, t_interval, start_x, start_y,
+                                                              piv_step_width, scale)
         # Get the track results in vector field grid and transform into image coordinate.
         all_x_trajectory.append(x_track)
         all_y_trajectory.append(y_track)
@@ -461,13 +463,13 @@ def select_by_index(track_id, index_list, track_x, track_y,
 #                                                                                 start_t, start_x_cor, start_y_cor)
 
 # # sub_origi_t has the structure of list containing all time steps. sub_piv_t has only start and end points.
-# # For easier plotting with original tracks together, convert the time stept from piv into the same form as oiriginal.
-# def convert_form_piv_time(pseudo_t_array): 
-#     pseudo_t_array_v2 = []
-#     for time in pseudo_t_array:
-#         t = [i for i in range(time[0], time[-1] + 1)]
-#         pseudo_t_array_v2.append(t)
-#     return pseudo_t_array_v2
+# For easier plotting with original tracks together, convert the time stept from piv into the same form as oiriginal.
+def convert_form_piv_time(pseudo_t_array): 
+    pseudo_t_array_v2 = []
+    for time in pseudo_t_array:
+        t = [i for i in range(time[0], time[-1] + 1)]
+        pseudo_t_array_v2.append(t)
+    return pseudo_t_array_v2
 
 # sub_piv_t_v2 = convert_form_piv_time(sub_piv_t)
 # pseudo_t_v2 = convert_form_piv_time(start_t)
@@ -483,7 +485,7 @@ def plot_original_pseudo_overlap(track_index, original_x, original_y, original_t
     plt.style.use('default')
     colors = list(mcolors.CSS4_COLORS.keys())
     
-    plt.figure(figsize=(10, 10))
+    plt.figure(figsize=(5, 5))
     for i in range(len(track_index)): 
     
         # pseudo tracks. 
@@ -496,9 +498,9 @@ def plot_original_pseudo_overlap(track_index, original_x, original_y, original_t
         origi_y_cor = original_y[i]
         origi_t = original_t[i]
 
-        c_i = track_index[i]
+        #c_i = track_index[i]
         #plt.plot(x_cor, y_cor, color=colors[i], zorder=1)
-        cmap_piv = def_cmap_2(colors[c_i])
+        #cmap_piv = def_cmap_2(colors[c_i])
         plt.scatter(piv_x_cor, piv_y_cor, c="dodgerblue", zorder=2)
         #cmap_origi = def_cmap(colors[i])
         plt.scatter(origi_x_cor, origi_y_cor, c="silver", zorder=1)
@@ -507,11 +509,11 @@ def plot_original_pseudo_overlap(track_index, original_x, original_y, original_t
         
     plt.xlim(0, 1024)
     plt.ylim(0, 1024)
-    plt.xticks(fontsize=15)
-    plt.yticks(fontsize=15)
+    plt.xticks([0, 500, 1000], (np.array([0, 500, 1000])*0.69).astype(int))
+    plt.yticks([0, 500, 1000], (np.array([0, 500, 1000])*0.69).astype(int))
     plt.gca().invert_yaxis()
     # fig_name a string.
-    plt.savefig(fig_name, dpi = 300)
+    plt.savefig(fig_name, format="svg", dpi = 300)
     plt.show()
 
 
@@ -659,14 +661,14 @@ def plot_time_error(track_id, original_x_track, original_y_track, piv_x_track, p
     positions = [i for i in range(1, len(mean_time_error)+1)]
     # Plot
     plt.style.use('default')
-    plt.figure(figsize=(30, 10))
+    plt.figure(figsize=(8, 2))
     plt.boxplot(time_error)
     plt.scatter(positions, mean_time_error)
-    plt.xticks(np.arange(0, len(mean_time_error), step=10), np.arange(0, len(mean_time_error), step=10), fontsize=20)
-    plt.yticks(np.arange(0, 351, step=50), np.arange(0, 351, step=50),fontsize=20)
-    plt.xlabel("frame", fontsize=25)
-    plt.ylabel("distance in pixel", fontsize=25)
-    plt.savefig(fig_name, dpi=300) # fig_name a string.
+    plt.xticks(np.arange(0, len(mean_time_error), step=50), np.arange(0, len(mean_time_error), step=50))
+    plt.yticks(np.arange(0, 351, step=100), np.arange(0, 351, step=100))
+    #plt.xlabel("frame")
+    #plt.ylabel("distance in pixel")
+    plt.savefig(fig_name, format="svg", dpi=300) # fig_name a string.
     plt.show()
 
     # fig, axs = plt.subplots(2, 1, figsize=(30, 10))
