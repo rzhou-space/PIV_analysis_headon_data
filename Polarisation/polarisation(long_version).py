@@ -14,11 +14,11 @@ from scipy.ndimage import median_filter
 
 # # Single Aggregate Extraction 
 
-# In[2]:
+# In[3]:
 
 
 # Extract the data information.
-h5_file_path = "/Users/rzhoufias.uni-frankfurt.de/Documents/PhD_Franziska/Headon/RedBeads/subregion_cut1.h5"
+h5_file_path = "/Users/rzhoufias.uni-frankfurt.de/Documents/PhD_Franziska/Headon/RedBeads/subregion_cut1(2).h5"
 with h5py.File(h5_file_path, "r") as h5f:
     green_channel = h5f["green"][:]
     red_channel = h5f["red"][:]
@@ -29,7 +29,7 @@ plt.imshow(green_channel[130])
 
 # # Manually extract single aggregates.
 
-# In[131]:
+# In[4]:
 
 
 def extract_single_aggregate(channel):
@@ -37,11 +37,11 @@ def extract_single_aggregate(channel):
     # Extract the image information for al frames. 
     aggregate = []
     for i in range(np.shape(channel)[0]):
-        aggregate.append(channel[i][380:500, 765:885]) # Manually fit the region of aggregate!
+        aggregate.append(channel[i][360:510, 630:770]) # Manually fit the region of aggregate!
     return np.array(aggregate)
 
 
-# In[132]:
+# In[71]:
 
 
 # Generate the subregion of images. 
@@ -49,7 +49,7 @@ aggregate = extract_single_aggregate(green_channel)
 np.shape(aggregate) # (number of frames, y coordinate, x coordinate) dimensional 
 
 # The aggregate image at different time point. 
-plt.imshow(aggregate[190])
+plt.imshow(aggregate[200])
 
 
 # In[20]:
@@ -63,23 +63,23 @@ plt.imshow(aggregate[190])
 
 # # Circle Mask 
 
-# In[133]:
+# In[11]:
 
 
 # Load data. 
 
 # Red in the single aggregate subregion image. (could for example be generated with capture "single aggregate extraction").
-h5_file_path = "/Users/rzhoufias.uni-frankfurt.de/Documents/PhD_Franziska/Headon/Polarisation/single_aggregate_cut1_v2.h5"
+h5_file_path = "/Users/rzhoufias.uni-frankfurt.de/Documents/PhD_Franziska/Headon/Polarisation/single_aggregate_cut1(2)_v1.h5"
 with h5py.File(h5_file_path, "r") as h5f:
     single_aggregate = h5f["green"][:]
 
 
-# In[154]:
+# In[72]:
 
 
 # Function for cutting circle: circle_mask(center_x, center_y, radius, img)
 
-circle_region = Polarisation.circle_mask(70, 50, 40, single_aggregate[150]) # x, y, and radius of circle. And the image that is cut.
+circle_region = Polarisation.circle_mask(90, 50, 45, single_aggregate[200]) # x, y, and radius of circle. And the image that is cut.
 plt.imshow(circle_region)
 
 
@@ -175,7 +175,15 @@ velocity_h1 = np.sqrt(avg_u_h1**2 + avg_v_h1**2) * pxl_conversion / time_convers
 
 # ## Polarity and Velocity for v1. 
 
-# In[42]:
+# In[76]:
+
+
+center_x_v1 = np.concatenate([np.repeat(100, 130), np.repeat(90, 50), np.repeat(80, 150), np.repeat(70, 45)])
+center_y_v1 = np.concatenate([np.repeat(40, 130), np.repeat(50, 100), np.repeat(60, 100), np.repeat(50, 45)])
+radius_v1 = np.repeat(45, 375)
+
+
+# In[77]:
 
 
 # Read in the single aggregate subregion image. (could for example be generated with capture "single aggregate extraction").
@@ -184,10 +192,11 @@ with h5py.File(h5_file_path, "r") as h5f:
     single_aggregate_v1 = h5f["green"][:]
 
 # Calculate the polarisation score for the single aggregate. 
-v1_polarisation = Polarisation.temperal_polarisation(single_aggregate_v1, 70, 50, 50, 15) / 45000 # Normalisation factor 35000
+# v1_polarisation = Polarisation.temperal_polarisation(single_aggregate_v1, 70, 50, 50, 15) / 45000 # Normalisation factor 45000
+v1_polarisation = temperal_polarisation(single_aggregate_v1, center_x_v1, center_y_v1, radius_v1) / 45000 # Normalisation factor 45000
 
 
-# In[43]:
+# In[41]:
 
 
 # Caluclate the velocity over time for the single aggregate based on the PIV vectors. 
@@ -292,7 +301,7 @@ velocity_h2 = np.sqrt(avg_u_h2**2 + avg_v_h2**2) * pxl_conversion / time_convers
 
 # ## Polarity and Velocity for v2.
 
-# In[35]:
+# In[19]:
 
 
 # center_x_v2 = np.concatenate([np.repeat(95, 120), np.repeat(92, 10), np.repeat(90, 10), np.repeat(88, 10), np.repeat(86, 10),
@@ -306,8 +315,12 @@ velocity_h2 = np.sqrt(avg_u_h2**2 + avg_v_h2**2) * pxl_conversion / time_convers
 # center_y_v2 = np.repeat(50, 375)
 # radius_v2 = np.repeat(50, 375)
 
+center_x_v2 = np.concatenate([np.repeat(80, 170), np.repeat(70, 50), np.repeat(60, 205)])
+center_y_v2 = np.concatenate([np.repeat(45, 170), np.repeat(50, 255)])
+radius_v2 = np.repeat(40, 375)
 
-# In[36]:
+
+# In[20]:
 
 
 # Read in the single aggregate subregion image. (could for example be generated with capture "single aggregate extraction").
@@ -316,11 +329,11 @@ with h5py.File(h5_file_path, "r") as h5f:
     single_aggregate_v2 = h5f["green"][:]
 
 # Calculate the polarisation score for the single aggregate. 
-# v2_polarisation = temperal_polarisation(single_aggregate_v2, center_x_v2, center_y_v2, radius_v2) / 30000 # Normalisation factor 30000
-v2_polarisation = Polarisation.temperal_polarisation(single_aggregate_v2, 60, 50, 50, 15) / 30000
+v2_polarisation = temperal_polarisation(single_aggregate_v2, center_x_v2, center_y_v2, radius_v2) / 30000 # Normalisation factor 30000
+# v2_polarisation = Polarisation.temperal_polarisation(single_aggregate_v2, 60, 50, 50, 15) / 30000
 
 
-# In[25]:
+# In[6]:
 
 
 # Caluclate the velocity over time for the single aggregate based on the PIV vectors. 
@@ -356,7 +369,7 @@ velocity_v2 = np.sqrt(avg_u_v2**2 + avg_v_v2**2) * pxl_conversion / time_convers
 
 # # Plot the Twinplot for velocity and polarisation. 
 
-# In[21]:
+# In[42]:
 
 
 # Plot the temporal polarisation score and the velocity together over time 
@@ -393,7 +406,7 @@ def twinplot_polarisation_velocity(avg_u, time_conversion, velocity, polarisatio
     plt.show()
 
 
-# In[45]:
+# In[79]:
 
 
 twinplot_polarisation_velocity(avg_u_v1, 15, velocity_v1, v1_polarisation, "v1_polarisation_velocity.svg")
